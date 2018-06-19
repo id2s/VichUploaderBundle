@@ -48,7 +48,7 @@ class VichFileType extends AbstractType
 
     public function __construct(
         StorageInterface $storage,
-        UploadHandler $handler, 
+        UploadHandler $handler,
         PropertyMappingFactory $factory,
         PropertyAccessorInterface $propertyAccessor = null
     ) {
@@ -111,32 +111,38 @@ class VichFileType extends AbstractType
         // add delete only if there is a file
         $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event) use ($options): void {
             $form = $event->getForm();
-            $object = $form->getParent()->getData();
 
-            // no object or no uploaded file: no delete button
-            if (null === $object || null === $this->storage->resolveUri($object, $form->getName())) {
-                return;
+            if ($form->getParent() !== null) {
+                $object = $form->getParent()->getData();
+
+                // no object or no uploaded file: no delete button
+                if (null === $object || null === $this->storage->resolveUri($object, $form->getName())) {
+                    return;
+                }
+
+                $form->add('delete', Type\CheckboxType::class, [
+                    'label' => $options['delete_label'],
+                    'mapped' => false,
+                    'translation_domain' => $options['translation_domain'],
+                    'required' => false,
+                ]);
             }
-
-            $form->add('delete', Type\CheckboxType::class, [
-                'label' => $options['delete_label'],
-                'mapped' => false,
-                'translation_domain' => $options['translation_domain'],
-                'required' => false,
-            ]);
         });
 
         // delete file if needed
         $builder->addEventListener(FormEvents::POST_SUBMIT, function (FormEvent $event): void {
             $form = $event->getForm();
-            $object = $form->getParent()->getData();
-            $delete = $form->has('delete') ? $form->get('delete')->getData() : false;
 
-            if (!$delete) {
-                return;
+            if ($form->getParent() !== null) {
+                $object = $form->getParent()->getData();
+                $delete = $form->has('delete') ? $form->get('delete')->getData() : false;
+
+                if (!$delete) {
+                    return;
+                }
+
+                $this->handler->remove($object, $form->getName());
             }
-
-            $this->handler->remove($object, $form->getName());
         });
     }
 
